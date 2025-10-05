@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "wiseTraveler",
+    "name": "Wise Traveler",
     "slug": "wiseTraveler",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-icon-wise.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
