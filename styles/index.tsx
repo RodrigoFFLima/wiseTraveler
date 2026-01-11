@@ -1,131 +1,61 @@
 import { StyleSheet } from "react-native";
 
-// Paleta de cores sugerida para um visual "Wise Traveler" (Moderno e Confiável)
-// Azul Escuro/Navy: #2C3E50 (Confiabilidade)
-// Verde Água/Menta: #1ABC9C (Ação/Botão)
-// Cinza Claro: #ECF0F1 (Fundo/Card Borda)
-
 export const styles = StyleSheet.create({
-  container: {
-    // MUDANÇA CRÍTICA: Alinha todo o conteúdo à ESQUERDA
-    alignItems: "flex-start",
-    paddingHorizontal: 25,
-    backgroundColor: "#F8F8F8",
-    paddingTop: 40,
-    paddingBottom: 50,
-  }, // Título Principal
-  title: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#2C3E50",
-    // Garante que o título ocupe 100% para alinhamento uniforme
-    width: "100%",
-    marginBottom: 8,
-  }, // Subtítulo
-  subtitle: {
-    marginVertical: 10,
-    fontSize: 15,
-    color: "#7F8C8D",
-    textAlign: "left", // MUDANÇA: Alinha o texto do subtítulo à esquerda
-    width: "100%", // Ocupa a largura total
-    marginBottom: 25, // Aumenta o espaço para os inputs
-  },
+  container: { flex: 1, backgroundColor: '#F2F5F8' },
+  headerBackground: { paddingBottom: 50, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  headerContent: { alignItems: 'center', marginTop: 10 },
+  title: { fontSize: 28, fontWeight: '800', color: '#FFF', marginTop: 10 },
+  subtitle: { color: '#B0BEC5', fontSize: 14 },
 
-  // Input
-  input: {
-    width: "100%",
-    paddingHorizontal: 16,
-    height: 50,
-    backgroundColor: "white",
-    borderRadius: 8,
-    borderColor: "#BDC3C7", // Borda mais suave
-    borderWidth: 1,
-    marginBottom: 15, // Mais espaço entre os inputs
-    fontSize: 16,
-    color: "#2C3E50",
-  },
+  contentContainer: { flex: 1, paddingHorizontal: 20, marginTop: -30 },
 
-  // Botão (Cor da Ação)
+  // --- Formulário ---
+  formCard: {
+    backgroundColor: '#FFF', borderRadius: 20, padding: 20, elevation: 8,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }
+  },
+  inputGroup: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA',
+    borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#E9ECEF'
+  },
+  inputIcon: { marginLeft: 15 },
+  input: { flex: 1, padding: 15, fontSize: 16, color: '#333' },
+  row: { flexDirection: 'row', alignItems: 'center' },
   button: {
-    backgroundColor: "#1ABC9C", // Verde Água para ação
-    height: 50, // Aumenta um pouco a altura
-    width: "100%",
-    marginVertical: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000", // Adiciona uma sombra suave para profundidade
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  button_text: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 18,
+    backgroundColor: '#2C5364', width: 56, height: 56, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 4
   },
 
-  // Título do Cronograma (Onde está o ícone do avião)
-  main_title_card: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#2C3E50",
-    marginTop: 25,
-    marginBottom: 10,
-    alignSelf: "flex-start",
-    // NOVO: Adicione padding horizontal para que o texto não toque a borda,
-    // mas remova a margem lateral que pode estar causando a quebra indesejada.
-    paddingHorizontal: 5, // Pequeno ajuste de padding para respirar
-  },
+  // --- Loading & Resultados ---
+  loadingContainer: { marginTop: 50, alignItems: 'center' },
+  loadingText: { fontSize: 18, color: '#2C5364', fontWeight: '600', marginTop: 20 },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 15 },
+  resultTitle: { fontSize: 20, fontWeight: 'bold', color: '#2C5364' },
+  shareButton: { backgroundColor: '#10B981', flexDirection: 'row', padding: 8, borderRadius: 20, paddingHorizontal: 15, alignItems: 'center' },
+  shareText: { color: '#FFF', fontWeight: '600', marginLeft: 5, fontSize: 12 },
 
-  // Card de Dia Individual
-  card: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    padding: 20, // Aumenta o padding interno
-    borderColor: "#ECF0F1", // Borda muito suave
-    width: "100%",
-    borderRadius: 10,
-    marginTop: 15,
-    // Sombra para destacar o card
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+  // --- Cards do Roteiro ---
+  card: { backgroundColor: '#FFF', borderRadius: 16, marginBottom: 20, padding: 20, elevation: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
+  dayBadge: { backgroundColor: '#2C5364', width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  dayText: { color: '#FFF', fontWeight: 'bold' },
+  cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', flex: 1 },
+  weatherTip: { fontSize: 12, color: '#666', fontStyle: 'italic', marginTop: 4 },
 
-  // Título do Dia (Dia 1 - Chegada...)
-  card_title_day: {
-    fontWeight: "bold",
-    fontSize: 17,
-    color: "#FF6B6B", // Mantive um toque vibrante aqui
-    marginBottom: 8,
-  },
+  // --- NOVA TIMELINE (Icones em vez de pontos) ---
+  timelineContainer: { position: 'relative', paddingLeft: 0 },
+  // AJUSTE 1: A linha agora fica centralizada com os novos ícones maiores
+  timelineLine: { position: 'absolute', left: 16, top: 10, bottom: 20, width: 2, backgroundColor: '#E0E0E0', zIndex: -1 },
+  timelineItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 25 },
 
-  divider: {
-    height: 1,
-    backgroundColor: "#ECF0F1", // Linha divisória muito discreta
-    marginVertical: 10,
+  // NOVO ESTILO: Container circular para o ícone
+  timelineIconContainer: {
+    width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center',
+    marginRight: 15, zIndex: 1, borderWidth: 2, borderColor: '#FFF', elevation: 1
   },
+  timelineContent: { flex: 1 },
+  periodTitle: { fontSize: 12, color: '#999', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
 
-  // Blocos de Manhã/Tarde/Noite
-  time_block: {
-    marginBottom: 18, // Aumenta o espaçamento entre Manhã, Tarde, Noite
-  },
-  time_block_last: {
-    marginBottom: 5,
-  },
-  time_title: {
-    fontWeight: "700",
-    fontSize: 15,
-    color: "#1ABC9C", // Usa a cor de ação para destacar a hora
-    marginBottom: 3,
-  },
-  card_text: {
-    fontSize: 14,
-    color: "#34495E", // Texto escuro e legível
-    lineHeight: 20, // Melhora a legibilidade de frases longas
-  },
+  // AJUSTE 2: Adicionado paddingRight para o texto não grudar na borda
+  activityText: { fontSize: 15, color: '#444', lineHeight: 22, paddingRight: 10 },
 });
