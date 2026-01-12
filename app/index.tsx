@@ -167,6 +167,8 @@ export default function Index() {
         setCooldownTime(30); 
       }
     } catch (error) {
+      console.error("❌ ERRO DETALHADO DA IA:", error);
+      
       Alert.alert("Erro", "Falha na conexão.");
     } finally {
       setLoading(false);

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Wise Traveler",
     "slug": "wiseTraveler",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "wisetraveler",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.rodrigofflima.wisetraveler",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
