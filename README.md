@@ -1,50 +1,31 @@
-# Welcome to your Expo app 👋
+# 🌍 WiseTraveler - Seu Roteiro Inteligente
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![Status do Projeto](https://img.shields.io/badge/Status-Publicado-green?style=for-the-badge)
+![Plataforma](https://img.shields.io/badge/Platform-Android-blue?style=for-the-badge&logo=android)
+![Tecnologia](https://img.shields.io/badge/Stack-React_Native-61DAFB?style=for-the-badge&logo=react)
 
-## Get started
+O **WiseTraveler** é um aplicativo mobile que utiliza Inteligência Artificial (Google Gemini) para transformar o planejamento de viagens em uma experiência de segundos. Este projeto nasceu de um desafio acadêmico na **UTFPR** e evoluiu para um produto real disponível na Google Play Store.
 
-1. Install dependencies
+## 🚀 O Projeto
+Idealizado durante a disciplina dos professores **Vinícius Oliveira**, **Vinicius Santos** e **Robison**, o objetivo foi aplicar conceitos avançados de desenvolvimento mobile e integração com LLMs (Large Language Models) para resolver uma dor real: a fadiga na tomada de decisão ao planejar roteiros.
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Tech Stack & Diferenciais Técnicos
+Para este lançamento, foquei em uma arquitetura moderna e escalável:
 
-2. Start the app
+* **Framework:** React Native + Expo (Managed Workflow).
+* **IA:** Integração com a API do Google Gemini para geração de conteúdo dinâmico.
+* **DevOps:** Pipeline de CI/CD configurado via **EAS (Expo Application Services)**.
+* **Segurança:** Implementação de **EAS Secrets** para proteção de chaves de API em produção (evitando exposição no código fonte).
 
-   ```bash
-   npx expo start
-   ```
+## 📱 Funcionalidades
+- [x] Geração de roteiros personalizados baseados em destino, dias e orçamento.
+- [x] Interface intuitiva e otimizada (UX).
+- [x] Integração em tempo real com IA.
 
-In the output, you'll find options to open the app in a
+## 📈 Resultados & Próximos Passos
+- **Publicação:** Disponível oficialmente na [Google Play Store](https://play.google.com/store/apps/details?id=com.rodrigofflima.wisetraveler)
+- **Próxima Milestone:** Desenvolvimento da versão para **iOS (Apple App Store)**.
+- **Novas Features:** Exportação para PDF e integração com mapas.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+Desenvolvido com ❤️ por Rodrigo como projeto de especialização na UTFPR.
