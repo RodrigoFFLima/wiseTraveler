@@ -7,7 +7,7 @@
 O **WiseTraveler** é um aplicativo mobile que utiliza Inteligência Artificial (Google Gemini) para transformar o planejamento de viagens em uma experiência de segundos. Este projeto nasceu de um desafio acadêmico na **UTFPR** e evoluiu para um produto real disponível na Google Play Store.
 
 ## 🚀 O Projeto
-Idealizado durante a disciplina dos professores **Vinícius Oliveira**, **Vinicius Santos** e **Robison**, o objetivo foi aplicar conceitos avançados de desenvolvimento mobile e integração com LLMs (Large Language Models) para resolver uma dor real: a fadiga na tomada de decisão ao planejar roteiros.
+Idealizado durante a disciplina dos professores **Vinícius Oliveira** e **Robison**, o objetivo foi aplicar conceitos avançados de desenvolvimento mobile e integração com LLMs (Large Language Models) para resolver uma dor real: a fadiga na tomada de decisão ao planejar roteiros.
 
 ## 🛠️ Tech Stack & Diferenciais Técnicos
 Para este lançamento, foquei em uma arquitetura moderna e escalável:
