@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Importante para o Rate Limit
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Input } from '../components/input';
-import { generateTravelSchedule, TravelSchedule } from '../services/ia/generator';
+import { generateTravelSchedule, getGeminiErrorMessage, regenerateTravelDay, TravelSchedule } from '../services/ia/generator';
 import { SavedTrip, tripStorage } from '../services/storage';
 import { styles } from '../styles';
 
@@ -24,16 +24,15 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [schedule, setSchedule] = useState<TravelSchedule | null>(null);
   const [history, setHistory] = useState<SavedTrip[]>([]);
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null);
   
-  // Estado para controlar o Rate Limit (Cooldown)
   const [cooldownTime, setCooldownTime] = useState(0);
 
   useEffect(() => {
     loadHistory();
   }, []);
 
-  // --- CORREÇÃO DO ERRO AQUI ---
-  // Trocamos NodeJS.Timeout por 'any' para evitar conflito de tipos
   useEffect(() => {
     let interval: any; 
     
@@ -45,7 +44,6 @@ export default function Index() {
     
     return () => clearInterval(interval);
   }, [cooldownTime]);
-  // -----------------------------
 
   useEffect(() => {
     const backAction = () => {
@@ -67,7 +65,6 @@ export default function Index() {
     setHistory(data);
   }
 
-  // NOVA FUNÇÃO: Excluir item do histórico (Corrigida)
   async function handleDeleteTrip(id: string) {
     Alert.alert(
       "Excluir Roteiro",
@@ -98,23 +95,17 @@ export default function Index() {
   }
 
   async function handleGenerate() {
-    // 1. VALIDAÇÃO DE CAMPOS VAZIOS
     if (!city || !days || !travelDate || travelDate.length < 10) {
       return Alert.alert("Ops!", "Preencha destino, data (DD/MM/AAAA) e dias.");
     }
 
-    // 2. VALIDAÇÃO DE DATA (NOVA 📅)
-    // Quebra o texto "25/12/2023" em partes numéricas
     const [day, month, year] = travelDate.split('/').map(Number);
     
-    // Cria a data inserida (Mês no JS começa em 0, por isso month - 1)
     const inputDate = new Date(year, month - 1, day);
     
-    // Cria a data de hoje e zera as horas (para comparar apenas dia/mês/ano)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Validação A: A data existe mesmo? (Evita 30/02, mês 13, etc)
     if (
       inputDate.getFullYear() !== year ||
       inputDate.getMonth() !== month - 1 ||
@@ -123,12 +114,10 @@ export default function Index() {
       return Alert.alert("Data Inválida", "Essa data não existe no calendário.");
     }
 
-    // Validação B: É passado?
     if (inputDate < today) {
       return Alert.alert("Viajante do Tempo? 🕰️", "A data da viagem não pode ser no passado!");
     }
 
-    // 3. VALIDAÇÃO DE DIAS
     const daysNumber = Number(days);
     if (isNaN(daysNumber) || daysNumber < 1) {
       return Alert.alert("Atenção", "A viagem precisa ter pelo menos 1 dia!");
@@ -137,7 +126,6 @@ export default function Index() {
       return Alert.alert("Eita!", "O limite atual é de 30 dias de roteiro.");
     }
 
-    // 4. RATE LIMIT
     if (cooldownTime > 0) {
       return Alert.alert("Aguarde", `Espere mais ${cooldownTime} segundos para gerar outro roteiro.`);
     }
@@ -150,7 +138,7 @@ export default function Index() {
         destination: city,
         days: daysNumber,
         interests,
-        travelDate // Enviamos a string formatada mesmo
+        travelDate
       });
 
       if (typeof result !== 'string') {
@@ -163,36 +151,56 @@ export default function Index() {
           schedule: result
         };
         await tripStorage.save(newTrip);
+        setActiveTripId(newTrip.id);
         loadHistory();
         setCooldownTime(30); 
       }
     } catch (error) {
       console.error("❌ ERRO DETALHADO DA IA:", error);
-      
-      Alert.alert("Erro", "Falha na conexão.");
+      const { title, message } = getGeminiErrorMessage(error);
+      Alert.alert(title, message);
     } finally {
       setLoading(false);
     }
   }
 
   function openHistoryItem(trip: SavedTrip) {
+    setActiveTripId(trip.id);
     setCity(trip.city);
     setDays(trip.days.toString());
     setTravelDate(trip.date);
     setSchedule(trip.schedule);
   }
 
-  // Função que aplica a máscara de data (DD/MM/AAAA)
+  async function handleRegenerateDay(index: number) {
+    if (!schedule || regeneratingDay !== null) return;
+    setRegeneratingDay(index);
+    try {
+      const replacement = await regenerateTravelDay({
+        destination: city,
+        day: schedule[index],
+        interests,
+        travelDate,
+      });
+      const updatedSchedule = schedule.map((day, dayIndex) => dayIndex === index ? replacement : day);
+      setSchedule(updatedSchedule);
+      if (activeTripId) await tripStorage.update(activeTripId, updatedSchedule);
+      await loadHistory();
+    } catch (error) {
+      const { title, message } = getGeminiErrorMessage(error);
+      Alert.alert(title, message);
+    } finally {
+      setRegeneratingDay(null);
+    }
+  }
+
   function handleDateChange(text: string) {
-    // 1. Remove tudo que não é número
     const cleaned = text.replace(/[^0-9]/g, '');
     let formatted = cleaned;
 
-    // 2. Adiciona a primeira barra após o dia
     if (cleaned.length > 2) {
       formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
     }
-    // 3. Adiciona a segunda barra após o mês
     if (cleaned.length > 4) {
       formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
     }
@@ -214,8 +222,24 @@ export default function Index() {
         <View style={styles.dayBadge}><Text style={styles.dayText}>{index + 1}</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.day.replace(/Dia \d+ - /, '')}</Text>
-          <Text style={styles.weatherTip}>🌡️ {item.weatherTip}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <Ionicons name="thermometer-outline" size={17} color="#666" style={{ marginTop: 2, marginRight: 5 }} />
+            <Text style={[styles.weatherTip, { flex: 1 }]}>{item.weatherTip}</Text>
+          </View>
         </View>
+        <TouchableOpacity
+          onPress={() => handleRegenerateDay(index)}
+          disabled={regeneratingDay !== null}
+          accessibilityRole="button"
+          accessibilityLabel={`Regenerar ${item.day}`}
+          style={{ padding: 8, marginLeft: 6 }}
+        >
+          {regeneratingDay === index ? (
+            <ActivityIndicator size="small" color="#2C5364" />
+          ) : (
+            <Ionicons name="refresh-outline" size={23} color="#2C5364" />
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.timelineContainer}>
@@ -311,7 +335,6 @@ export default function Index() {
                   style={{ flex: 1, marginBottom: 0, marginRight: 10 }}
                 />
                 
-                {/* Botão com tratamento visual se estiver em Cooldown */}
                 <TouchableOpacity 
                   style={[styles.button, { marginBottom: 0, backgroundColor: cooldownTime > 0 ? '#999' : '#2C5364' }]} 
                   onPress={handleGenerate}
@@ -327,7 +350,10 @@ export default function Index() {
             </View>
 
             <View style={{ marginTop: 30, flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2C5364', marginBottom: 15 }}>📜 Últimos Roteiros</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                <Ionicons name="document-text-outline" size={22} color="#2C5364" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#2C5364' }}>Últimos Roteiros</Text>
+              </View>
               <FlatList
                 data={history}
                 keyExtractor={item => item.id}
@@ -339,12 +365,13 @@ export default function Index() {
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>{item.city}</Text>
-                        <Text style={{ fontSize: 14, color: '#666' }}>📅 {item.date} • {item.days} dias</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                          <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginRight: 5 }} />
+                          <Text style={{ fontSize: 14, color: '#666' }}>{item.date} • {item.days} dias</Text>
+                        </View>
                       </View>
                       
-                      {/* Área de Ação: Abrir e Excluir */}
                       <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                         {/* Botão de Excluir Pequeno */}
                          <TouchableOpacity onPress={() => handleDeleteTrip(item.id)} style={{padding: 10, marginRight: 5}}>
                             <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
                          </TouchableOpacity>

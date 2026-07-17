@@ -23,6 +23,12 @@ export const tripStorage = {
     }
   },
 
+  async update(id: string, schedule: TravelSchedule) {
+    const stored = await this.getAll();
+    const updated = stored.map((trip) => (trip.id === id ? { ...trip, schedule } : trip));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  },
+
   // Pegar todos
   async getAll(): Promise<SavedTrip[]> {
     try {
