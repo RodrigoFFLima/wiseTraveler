@@ -1,7 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
 import { Stack } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, BackHandler, FlatList, Share, StatusBar,
@@ -26,6 +28,7 @@ export default function Index() {
   const [history, setHistory] = useState<SavedTrip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   
   const [cooldownTime, setCooldownTime] = useState(0);
 
@@ -92,6 +95,63 @@ export default function Index() {
     if (!schedule) return;
     const message = schedule.map(d => `📅 *${d.day}* (${d.weatherTip})\n${d.morning}`).join('\n');
     Share.share({ message: `✈️ Roteiro WiseTraveler para ${city}:\n${message}` });
+  }
+
+  function escapeHtml(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async function handleExportPdf() {
+    if (!schedule || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const scheduleHtml = schedule.map((item, index) => `
+        <section class="day">
+          <div class="day-title"><span class="badge">${index + 1}</span><h2>${escapeHtml(item.day)}</h2></div>
+          <p class="weather">Temperatura e roupas: ${escapeHtml(item.weatherTip)}</p>
+          <div class="activity"><strong>Manhã</strong><p>${escapeHtml(item.morning)}</p></div>
+          <div class="activity"><strong>Tarde</strong><p>${escapeHtml(item.afternoon)}</p></div>
+          <div class="activity"><strong>Noite</strong><p>${escapeHtml(item.night)}</p></div>
+        </section>
+      `).join('');
+
+      const html = `
+        <!doctype html><html><head><meta charset="utf-8" />
+        <style>
+          @page { margin: 28px; }
+          body { font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; color: #24343b; }
+          header { background: #2c5364; color: white; padding: 22px; border-radius: 12px; }
+          h1 { margin: 0 0 8px; font-size: 26px; } header p { margin: 0; font-size: 15px; }
+          .day { page-break-inside: avoid; border: 1px solid #dce5e8; border-radius: 12px; padding: 16px; margin-top: 18px; }
+          .day-title { display: flex; align-items: center; gap: 10px; } h2 { margin: 0; font-size: 19px; }
+          .badge { background: #2c5364; color: white; border-radius: 50%; width: 28px; height: 28px; text-align: center; line-height: 28px; font-weight: bold; }
+          .weather { color: #65747a; font-style: italic; margin: 10px 0 16px; }
+          .activity { border-left: 3px solid #4db6ac; padding-left: 12px; margin: 12px 0; }
+          .activity strong { color: #2c5364; } .activity p { margin: 4px 0 0; line-height: 1.4; }
+          footer { color: #849197; font-size: 11px; text-align: center; margin-top: 24px; }
+        </style></head><body>
+          <header><h1>WiseTraveler · ${escapeHtml(city)}</h1><p>${escapeHtml(travelDate)} · ${escapeHtml(days)} dias</p></header>
+          ${scheduleHtml}<footer>Roteiro criado pelo WiseTraveler</footer>
+        </body></html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartilhar roteiro em PDF' });
+      } else {
+        Alert.alert('PDF gerado', 'O compartilhamento não está disponível neste dispositivo.');
+      }
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      Alert.alert('Erro', 'Não foi possível gerar o PDF. Tente novamente.');
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   async function handleGenerate() {
@@ -403,10 +463,16 @@ export default function Index() {
                   {travelDate} {travelDate ? '-' : ''} {days} dias
                 </Text>
               </View>
-              <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-                <Ionicons name="share-social-outline" size={20} color="#FFF" />
-                <Text style={styles.shareText}>Compartilhar</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={handleExportPdf} style={styles.shareButton} disabled={exportingPdf}>
+                  {exportingPdf ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="document-text-outline" size={20} color="#FFF" />}
+                  <Text style={styles.shareText}>{exportingPdf ? 'Gerando...' : 'PDF'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+                  <Ionicons name="share-social-outline" size={20} color="#FFF" />
+                  <Text style={styles.shareText}>Compartilhar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <FlatList
               data={schedule}
