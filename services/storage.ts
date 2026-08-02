@@ -9,6 +9,14 @@ export interface SavedTrip {
   days: number;
   date: string; // Nova informação
   schedule: TravelSchedule;
+  checklist?: ChecklistItem[];
+}
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  category: string;
+  completed: boolean;
 }
 
 export const tripStorage = {
@@ -32,6 +40,12 @@ export const tripStorage = {
   async remove(id: string) {
     const stored = await this.getAll();
     const updated = stored.filter((trip) => trip.id !== id);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  },
+
+  async updateChecklist(id: string, checklist: ChecklistItem[]) {
+    const stored = await this.getAll();
+    const updated = stored.map((trip) => (trip.id === id ? { ...trip, checklist } : trip));
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   },
 

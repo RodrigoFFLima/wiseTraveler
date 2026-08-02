@@ -4,6 +4,7 @@ interface TravelScheduleParams {
   destination: string;
   days: number;
   interests?: string;
+  travelStyle?: string;
   travelDate?: string;
 }
 
@@ -107,7 +108,7 @@ export function getGeminiErrorMessage(error: unknown): { title: string; message:
   };
 }
 
-function buildPrompt({ destination, days, interests, travelDate }: TravelScheduleParams) {
+function buildPrompt({ destination, days, interests, travelStyle, travelDate }: TravelScheduleParams) {
   const whenPrompt = travelDate
     ? `A viagem será em: ${travelDate}. Considere o clima histórico desta época para gerar as 'weatherTips'.`
     : "Considere o clima médio anual.";
@@ -115,6 +116,7 @@ function buildPrompt({ destination, days, interests, travelDate }: TravelSchedul
   return `
     Crie um roteiro de ${days} dias para ${destination}.
     O usuário gosta de: ${interests || "pontos turísticos clássicos"}.
+    O estilo de viagem é: ${travelStyle || "viajante geral"}. Adapte o ritmo e as sugestões a esse estilo.
     ${whenPrompt}
     
     Para cada dia, inclua uma "weatherTip" com previsão de temperatura MÉDIA (ex: Max 30° Min 24°) para essa época do ano e dicas de roupa.
@@ -193,6 +195,7 @@ export async function regenerateTravelDay(params: {
   destination: string;
   day: DaySchedule;
   interests?: string;
+  travelStyle?: string;
   travelDate?: string;
 }): Promise<DaySchedule> {
   const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY || "");
@@ -200,6 +203,7 @@ export async function regenerateTravelDay(params: {
     Crie uma nova versão para este dia de viagem em ${params.destination}.
     Mantenha o mesmo número e identificação do dia (${params.day.day}), mas sugira atividades diferentes.
     O usuário gosta de: ${params.interests || "pontos turísticos clássicos"}.
+    O estilo de viagem é: ${params.travelStyle || "viajante geral"}. Adapte as novas atividades a esse estilo.
     ${params.travelDate ? `A viagem será em ${params.travelDate}; considere o clima dessa época.` : "Considere o clima médio anual."}
     Retorne uma manhã, uma tarde, uma noite, os locais correspondentes em morningPlace, afternoonPlace e nightPlace, e uma dica de clima/roupa.
   `;

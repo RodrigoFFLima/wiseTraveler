@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, BackHandler, FlatList, Linking, Share, StatusBar,
+  ActivityIndicator, Alert, BackHandler, FlatList, KeyboardAvoidingView, Linking, Platform, ScrollView, Share, StatusBar,
   Text,
   TouchableOpacity, View
 } from 'react-native';
@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '../components/input';
 import { generateTravelSchedule, getGeminiErrorMessage, regenerateTravelDay, TravelSchedule } from '../services/ia/generator';
 import { posthog } from '../services/posthog';
-import { SavedTrip, tripStorage } from '../services/storage';
+import { ChecklistItem, SavedTrip, tripStorage } from '../services/storage';
 import { styles } from '../styles';
 
 export default function Index() {
@@ -31,6 +31,8 @@ export default function Index() {
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checklistVisible, setChecklistVisible] = useState(false);
   
   const [cooldownTime, setCooldownTime] = useState(0);
   const [onboardingLoading, setOnboardingLoading] = useState(true);
@@ -40,6 +42,19 @@ export default function Index() {
 
   const onboardingStyles = ['Casal', 'Família', 'Aventura', 'Cultura', 'Relaxar'];
 
+  function createChecklist(): ChecklistItem[] {
+    return [
+      ['documentos', 'Documentos e reservas', 'Documentos'],
+      ['cartoes', 'Cartões e dinheiro', 'Documentos'],
+      ['roupas', 'Roupas adequadas ao clima', 'Roupas'],
+      ['calcados', 'Calçados confortáveis', 'Roupas'],
+      ['higiene', 'Itens de higiene pessoal', 'Higiene'],
+      ['remedios', 'Remédios de uso contínuo', 'Saúde'],
+      ['carregadores', 'Carregadores e adaptadores', 'Eletrônicos'],
+      ['bateria', 'Bateria externa', 'Eletrônicos'],
+    ].map(([id, label, category]) => ({ id, label, category, completed: false }));
+  }
+
   useEffect(() => {
     loadHistory();
     AsyncStorage.getItem('@wise_traveler_onboarding_complete').then((value) => {
@@ -47,7 +62,18 @@ export default function Index() {
       setOnboardingLoading(false);
       if (value !== 'true') posthog?.capture('onboarding_started');
     });
+    AsyncStorage.getItem('@wise_traveler_preferences').then((value) => {
+      if (!value) return;
+      try {
+        const preferences = JSON.parse(value) as { travelStyle?: string; interests?: string };
+        if (preferences.travelStyle) setTravelStyle(preferences.travelStyle);
+        if (preferences.interests) setInterests(preferences.interests);
+      } catch {
+        // Preferências antigas inválidas não devem impedir a abertura do app.
+      }
+    });
   }, []);
+
 
   useEffect(() => {
     let interval: any; 
@@ -226,6 +252,7 @@ export default function Index() {
         destination: city,
         days: daysNumber,
         interests,
+        travelStyle,
         travelDate
       });
 
@@ -236,8 +263,10 @@ export default function Index() {
           city,
           days: daysNumber,
           date: travelDate,
-          schedule: result
+          schedule: result,
+          checklist: createChecklist(),
         };
+        setChecklist(newTrip.checklist ?? []);
         await tripStorage.save(newTrip);
         posthog?.capture('itinerary_generated', {
           itinerary_days: daysNumber,
@@ -262,6 +291,13 @@ export default function Index() {
     setDays(trip.days.toString());
     setTravelDate(trip.date);
     setSchedule(trip.schedule);
+    setChecklist(trip.checklist ?? createChecklist());
+  }
+
+  async function toggleChecklistItem(id: string) {
+    const updated = checklist.map((item) => item.id === id ? { ...item, completed: !item.completed } : item);
+    setChecklist(updated);
+    if (activeTripId) await tripStorage.updateChecklist(activeTripId, updated);
   }
 
   async function handleRegenerateDay(index: number) {
@@ -272,6 +308,7 @@ export default function Index() {
         destination: city,
         day: schedule[index],
         interests,
+        travelStyle,
         travelDate,
       });
       const updatedSchedule = schedule.map((day, dayIndex) => dayIndex === index ? replacement : day);
@@ -366,13 +403,42 @@ export default function Index() {
     );
   }
 
+  function renderChecklist() {
+    const completedCount = checklist.filter((item) => item.completed).length;
+    return (
+      <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+        <TouchableOpacity onPress={() => setChecklistVisible(!checklistVisible)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="checkmark-circle-outline" size={23} color="#2C5364" />
+            <Text style={{ color: '#2C5364', fontSize: 16, fontWeight: '700', marginLeft: 8 }}>Checklist de viagem</Text>
+          </View>
+          <Text style={{ color: '#78909C', fontSize: 13 }}>{completedCount}/{checklist.length}</Text>
+        </TouchableOpacity>
+        {checklistVisible && checklist.map((item) => (
+          <TouchableOpacity key={item.id} onPress={() => toggleChecklistItem(item.id)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#F0F2F3' }}>
+            <Ionicons name={item.completed ? 'checkbox' : 'square-outline'} size={22} color={item.completed ? '#10B981' : '#78909C'} />
+            <Text style={{ flex: 1, marginLeft: 9, color: item.completed ? '#9AA6AA' : '#444', textDecorationLine: item.completed ? 'line-through' : 'none' }}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }
+
   if (onboardingLoading) {
     return <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color="#2C5364" /></View>;
   }
 
   if (showOnboarding) {
     return (
-      <View style={[styles.container, { padding: 24, justifyContent: 'center' }]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center' }}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 24, elevation: 5 }}>
           <MaterialCommunityIcons name="airplane-takeoff" size={48} color="#2C5364" />
           {onboardingStep === 0 && <>
@@ -392,7 +458,8 @@ export default function Index() {
           <TouchableOpacity onPress={() => onboardingStep < 2 ? setOnboardingStep(onboardingStep + 1) : completeOnboarding()} disabled={onboardingStep === 1 && !travelStyle} style={{ backgroundColor: onboardingStep === 1 && !travelStyle ? '#B7C4C9' : '#2C5364', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 12 }}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{onboardingStep < 2 ? 'Continuar' : 'Começar a planejar'}</Text></TouchableOpacity>
           <TouchableOpacity onPress={skipOnboarding} style={{ alignItems: 'center', padding: 14 }}><Text style={{ color: '#78909C' }}>Pular por agora</Text></TouchableOpacity>
         </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -453,7 +520,11 @@ export default function Index() {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+    >
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
 
@@ -595,6 +666,7 @@ export default function Index() {
               </View>
             </View>
             <FlatList
+              ListHeaderComponent={renderChecklist}
               data={schedule}
               keyExtractor={(item) => item.day}
               renderItem={renderScheduleItem}
@@ -604,6 +676,6 @@ export default function Index() {
           </View>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
