@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, BackHandler, FlatList, Share, StatusBar,
+  ActivityIndicator, Alert, BackHandler, FlatList, Linking, Share, StatusBar,
   Text,
   TouchableOpacity, View
 } from 'react-native';
@@ -300,6 +300,45 @@ export default function Index() {
     setTravelDate('');
   }
 
+  function handleOpenMap(activity: string) {
+    const query = encodeURIComponent(`${activity}, ${city}`);
+    const openMap = (provider: 'google' | 'apple' | 'waze') => {
+      const urls = {
+        google: `https://www.google.com/maps/search/?api=1&query=${query}`,
+        apple: `http://maps.apple.com/?q=${query}`,
+        waze: `https://waze.com/ul?q=${query}&navigate=yes`,
+      };
+      posthog?.capture('navigation_opened', { provider });
+      Linking.openURL(urls[provider]).catch(() => {
+        Alert.alert('Não foi possível abrir o mapa', 'Verifique se há um aplicativo de mapas instalado.');
+      });
+    };
+
+    Alert.alert('Abrir local no mapa', 'Escolha seu aplicativo de navegação:', [
+      { text: 'Google Maps', onPress: () => openMap('google') },
+      { text: 'Apple Mapas', onPress: () => openMap('apple') },
+      { text: 'Waze', onPress: () => openMap('waze') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+
+  function renderActivity(activity: string) {
+    return (
+      <>
+        <Text style={styles.activityText}>{activity}</Text>
+        <TouchableOpacity
+          onPress={() => handleOpenMap(activity)}
+          accessibilityRole="button"
+          accessibilityLabel={`Abrir ${activity} no mapa`}
+          style={{ flexDirection: 'row', alignItems: 'center', marginTop: 7 }}
+        >
+          <Ionicons name="navigate-outline" size={15} color="#2C5364" />
+          <Text style={{ color: '#2C5364', fontSize: 13, fontWeight: '600', marginLeft: 5 }}>Ver no mapa</Text>
+        </TouchableOpacity>
+      </>
+    );
+  }
+
   const renderScheduleItem = ({ item, index }: { item: any, index: number }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -333,7 +372,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-sunny" size={20} color="#FFB74D" />
           </View>
           <View style={styles.timelineContent}>
-            <Text style={styles.activityText}>{item.morning}</Text>
+            {renderActivity(item.morning)}
           </View>
         </View>
         <View style={styles.timelineItem}>
@@ -341,7 +380,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-sunset" size={20} color="#4DB6AC" />
           </View>
           <View style={styles.timelineContent}>
-            <Text style={styles.activityText}>{item.afternoon}</Text>
+            {renderActivity(item.afternoon)}
           </View>
         </View>
         <View style={styles.timelineItem}>
@@ -349,7 +388,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-night" size={20} color="#7986CB" />
           </View>
           <View style={styles.timelineContent}>
-            <Text style={styles.activityText}>{item.night}</Text>
+            {renderActivity(item.night)}
           </View>
         </View>
       </View>
