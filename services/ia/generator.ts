@@ -11,8 +11,11 @@ export interface DaySchedule {
   day: string;
   weatherTip: string;
   morning: string;
+  morningPlace?: string;
   afternoon: string;
+  afternoonPlace?: string;
   night: string;
+  nightPlace?: string;
 }
 
 export type TravelSchedule = DaySchedule[];
@@ -36,11 +39,14 @@ const dayScheduleSchema: Schema = {
         "Breve dica de clima ou roupa para este dia. Ex: 'Leve guarda-chuva' ou 'Muito sol, use protetor'.",
       nullable: false,
     },
-    morning: { type: SchemaType.STRING, nullable: false },
-    afternoon: { type: SchemaType.STRING, nullable: false },
-    night: { type: SchemaType.STRING, nullable: false },
+      morning: { type: SchemaType.STRING, nullable: false },
+      morningPlace: { type: SchemaType.STRING, nullable: false },
+      afternoon: { type: SchemaType.STRING, nullable: false },
+      afternoonPlace: { type: SchemaType.STRING, nullable: false },
+      night: { type: SchemaType.STRING, nullable: false },
+      nightPlace: { type: SchemaType.STRING, nullable: false },
   },
-  required: ["day", "weatherTip", "morning", "afternoon", "night"],
+  required: ["day", "weatherTip", "morning", "morningPlace", "afternoon", "afternoonPlace", "night", "nightPlace"],
 };
 
 const scheduleSchema: Schema = {
@@ -112,6 +118,7 @@ function buildPrompt({ destination, days, interests, travelDate }: TravelSchedul
     ${whenPrompt}
     
     Para cada dia, inclua uma "weatherTip" com previsão de temperatura MÉDIA (ex: Max 30° Min 24°) para essa época do ano e dicas de roupa.
+    Para cada período, retorne também o nome exato do principal local ou atração em "morningPlace", "afternoonPlace" e "nightPlace". Se não houver um local específico, use o nome do bairro ou região.
   `;
 }
 
@@ -194,7 +201,7 @@ export async function regenerateTravelDay(params: {
     Mantenha o mesmo número e identificação do dia (${params.day.day}), mas sugira atividades diferentes.
     O usuário gosta de: ${params.interests || "pontos turísticos clássicos"}.
     ${params.travelDate ? `A viagem será em ${params.travelDate}; considere o clima dessa época.` : "Considere o clima médio anual."}
-    Retorne uma manhã, uma tarde, uma noite e uma dica de clima/roupa.
+    Retorne uma manhã, uma tarde, uma noite, os locais correspondentes em morningPlace, afternoonPlace e nightPlace, e uma dica de clima/roupa.
   `;
   let lastError: unknown;
 

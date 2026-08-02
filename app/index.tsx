@@ -326,11 +326,11 @@ export default function Index() {
     setShowOnboarding(false);
   }
 
-  function handleOpenMap(activity: string) {
-    const query = encodeURIComponent(`${activity}, ${city}`);
+  function handleOpenMap(activity: string, place?: string) {
+    const query = encodeURIComponent(`${place || activity}, ${city}`);
     const openMap = (provider: 'google' | 'apple' | 'waze') => {
       const urls = {
-        google: `https://www.google.com/maps/search/?api=1&query=${query}`,
+        google: `https://maps.google.com/?q=${query}`,
         apple: `http://maps.apple.com/?q=${query}`,
         waze: `https://waze.com/ul?q=${query}&navigate=yes`,
       };
@@ -348,12 +348,13 @@ export default function Index() {
     ]);
   }
 
-  function renderActivity(activity: string) {
+  function renderActivity(activity: string, place?: string) {
     return (
       <>
         <Text style={styles.activityText}>{activity}</Text>
+        {place ? <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}><Ionicons name="location-outline" size={13} color="#78909C" /><Text style={{ color: '#78909C', fontSize: 12, marginLeft: 3 }}>{place}</Text></View> : null}
         <TouchableOpacity
-          onPress={() => handleOpenMap(activity)}
+          onPress={() => handleOpenMap(activity, place)}
           accessibilityRole="button"
           accessibilityLabel={`Abrir ${activity} no mapa`}
           style={{ flexDirection: 'row', alignItems: 'center', marginTop: 7 }}
@@ -428,7 +429,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-sunny" size={20} color="#FFB74D" />
           </View>
           <View style={styles.timelineContent}>
-            {renderActivity(item.morning)}
+            {renderActivity(item.morning, item.morningPlace)}
           </View>
         </View>
         <View style={styles.timelineItem}>
@@ -436,7 +437,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-sunset" size={20} color="#4DB6AC" />
           </View>
           <View style={styles.timelineContent}>
-            {renderActivity(item.afternoon)}
+            {renderActivity(item.afternoon, item.afternoonPlace)}
           </View>
         </View>
         <View style={styles.timelineItem}>
@@ -444,7 +445,7 @@ export default function Index() {
             <MaterialCommunityIcons name="weather-night" size={20} color="#7986CB" />
           </View>
           <View style={styles.timelineContent}>
-            {renderActivity(item.night)}
+            {renderActivity(item.night, item.nightPlace)}
           </View>
         </View>
       </View>
