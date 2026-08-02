@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
@@ -32,9 +33,20 @@ export default function Index() {
   const [exportingPdf, setExportingPdf] = useState(false);
   
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [travelStyle, setTravelStyle] = useState('');
+
+  const onboardingStyles = ['Casal', 'Família', 'Aventura', 'Cultura', 'Relaxar'];
 
   useEffect(() => {
     loadHistory();
+    AsyncStorage.getItem('@wise_traveler_onboarding_complete').then((value) => {
+      setShowOnboarding(value !== 'true');
+      setOnboardingLoading(false);
+      if (value !== 'true') posthog?.capture('onboarding_started');
+    });
   }, []);
 
   useEffect(() => {
@@ -300,6 +312,20 @@ export default function Index() {
     setTravelDate('');
   }
 
+  async function completeOnboarding() {
+    await AsyncStorage.setItem('@wise_traveler_onboarding_complete', 'true');
+    if (interests.trim()) setInterests(interests.trim());
+    await AsyncStorage.setItem('@wise_traveler_preferences', JSON.stringify({ travelStyle, interests: interests.trim() }));
+    posthog?.capture('onboarding_completed', { travel_style: travelStyle, has_interests: Boolean(interests.trim()) });
+    setShowOnboarding(false);
+  }
+
+  function skipOnboarding() {
+    AsyncStorage.setItem('@wise_traveler_onboarding_complete', 'true');
+    posthog?.capture('onboarding_skipped', { step: onboardingStep });
+    setShowOnboarding(false);
+  }
+
   function handleOpenMap(activity: string) {
     const query = encodeURIComponent(`${activity}, ${city}`);
     const openMap = (provider: 'google' | 'apple' | 'waze') => {
@@ -336,6 +362,36 @@ export default function Index() {
           <Text style={{ color: '#2C5364', fontSize: 13, fontWeight: '600', marginLeft: 5 }}>Ver no mapa</Text>
         </TouchableOpacity>
       </>
+    );
+  }
+
+  if (onboardingLoading) {
+    return <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color="#2C5364" /></View>;
+  }
+
+  if (showOnboarding) {
+    return (
+      <View style={[styles.container, { padding: 24, justifyContent: 'center' }]}>
+        <View style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 24, elevation: 5 }}>
+          <MaterialCommunityIcons name="airplane-takeoff" size={48} color="#2C5364" />
+          {onboardingStep === 0 && <>
+            <Text style={{ fontSize: 30, fontWeight: '800', color: '#2C5364', marginTop: 18 }}>Viaje melhor com o WiseTraveler</Text>
+            <Text style={{ fontSize: 17, color: '#666', lineHeight: 25, marginTop: 12 }}>Crie roteiros personalizados em segundos, descubra novos lugares e aproveite mais cada viagem.</Text>
+          </>}
+          {onboardingStep === 1 && <>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#2C5364', marginTop: 18 }}>Qual é o seu estilo?</Text>
+            <Text style={{ color: '#666', marginVertical: 12 }}>Vamos adaptar as sugestões ao seu jeito de viajar.</Text>
+            {onboardingStyles.map((style) => <TouchableOpacity key={style} onPress={() => setTravelStyle(style)} style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: travelStyle === style ? '#2C5364' : '#DDE3E6', backgroundColor: travelStyle === style ? '#E8F1F4' : '#FFF', marginBottom: 8 }}><Text style={{ color: '#2C5364', fontWeight: '600' }}>{style}</Text></TouchableOpacity>)}
+          </>}
+          {onboardingStep === 2 && <>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#2C5364', marginTop: 18 }}>O que você gosta?</Text>
+            <Text style={{ color: '#666', marginVertical: 12 }}>Ex.: gastronomia, natureza, museus, praias...</Text>
+            <Input iconName="heart-outline" placeholder="Seus interesses" value={interests} onChangeText={setInterests} />
+          </>}
+          <TouchableOpacity onPress={() => onboardingStep < 2 ? setOnboardingStep(onboardingStep + 1) : completeOnboarding()} disabled={onboardingStep === 1 && !travelStyle} style={{ backgroundColor: onboardingStep === 1 && !travelStyle ? '#B7C4C9' : '#2C5364', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 12 }}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{onboardingStep < 2 ? 'Continuar' : 'Começar a planejar'}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={skipOnboarding} style={{ alignItems: 'center', padding: 14 }}><Text style={{ color: '#78909C' }}>Pular por agora</Text></TouchableOpacity>
+        </View>
+      </View>
     );
   }
 
