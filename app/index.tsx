@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Input } from '../components/input';
 import { generateTravelSchedule, getGeminiErrorMessage, regenerateTravelDay, TravelSchedule } from '../services/ia/generator';
+import { posthog } from '../services/posthog';
 import { SavedTrip, tripStorage } from '../services/storage';
 import { styles } from '../styles';
 
@@ -85,6 +86,7 @@ export default function Index() {
             // 2. Salva a nova lista no celular (usando AsyncStorage direto)
             // Removemos a linha tripStorage.saveAll que estava dando erro
             await AsyncStorage.setItem('@wisetraveler:trips', JSON.stringify(newHistory));
+            posthog?.capture('saved_itinerary_deleted');
           }
         }
       ]
@@ -94,6 +96,9 @@ export default function Index() {
   async function handleShare() {
     if (!schedule) return;
     const message = schedule.map(d => `📅 *${d.day}* (${d.weatherTip})\n${d.morning}`).join('\n');
+    posthog?.capture('itinerary_share_initiated', {
+      itinerary_days: schedule.length,
+    });
     Share.share({ message: `✈️ Roteiro WiseTraveler para ${city}:\n${message}` });
   }
 
@@ -141,6 +146,9 @@ export default function Index() {
       `;
 
       const { uri } = await Print.printToFileAsync({ html });
+      posthog?.capture('itinerary_exported_pdf', {
+        itinerary_days: schedule.length,
+      });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartilhar roteiro em PDF' });
       } else {
@@ -211,6 +219,10 @@ export default function Index() {
           schedule: result
         };
         await tripStorage.save(newTrip);
+        posthog?.capture('itinerary_generated', {
+          itinerary_days: daysNumber,
+          has_interests: Boolean(interests.trim()),
+        });
         setActiveTripId(newTrip.id);
         loadHistory();
         setCooldownTime(30); 
@@ -245,6 +257,10 @@ export default function Index() {
       const updatedSchedule = schedule.map((day, dayIndex) => dayIndex === index ? replacement : day);
       setSchedule(updatedSchedule);
       if (activeTripId) await tripStorage.update(activeTripId, updatedSchedule);
+      posthog?.capture('itinerary_day_regenerated', {
+        day_number: index + 1,
+        itinerary_days: updatedSchedule.length,
+      });
       await loadHistory();
     } catch (error) {
       const { title, message } = getGeminiErrorMessage(error);
