@@ -29,6 +29,12 @@ export const tripStorage = {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   },
 
+  async remove(id: string) {
+    const stored = await this.getAll();
+    const updated = stored.filter((trip) => trip.id !== id);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  },
+
   // Pegar todos
   async getAll(): Promise<SavedTrip[]> {
     try {

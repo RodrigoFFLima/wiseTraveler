@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import { Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -83,9 +83,7 @@ export default function Index() {
             const newHistory = history.filter(item => item.id !== id);
             setHistory(newHistory);
             
-            // 2. Salva a nova lista no celular (usando AsyncStorage direto)
-            // Removemos a linha tripStorage.saveAll que estava dando erro
-            await AsyncStorage.setItem('@wisetraveler:trips', JSON.stringify(newHistory));
+            await tripStorage.remove(id);
             posthog?.capture('saved_itinerary_deleted');
           }
         }
@@ -146,11 +144,21 @@ export default function Index() {
       `;
 
       const { uri } = await Print.printToFileAsync({ html });
+      const safeCity = city
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase() || 'viagem';
+      const safeDate = travelDate.replace(/[^0-9-]/g, '-');
+      const fileName = `wisetraveler-${safeCity}-${safeDate}.pdf`;
+      const renamedUri = `${FileSystem.cacheDirectory}${fileName}`;
+      await FileSystem.moveAsync({ from: uri, to: renamedUri });
       posthog?.capture('itinerary_exported_pdf', {
         itinerary_days: schedule.length,
       });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartilhar roteiro em PDF' });
+        await Sharing.shareAsync(renamedUri, { mimeType: 'application/pdf', dialogTitle: 'Compartilhar roteiro em PDF' });
       } else {
         Alert.alert('PDF gerado', 'O compartilhamento não está disponível neste dispositivo.');
       }
