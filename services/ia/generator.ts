@@ -5,12 +5,14 @@ interface TravelScheduleParams {
   days: number;
   interests?: string;
   travelStyle?: string;
+  budget?: string;
   travelDate?: string;
 }
 
 export interface DaySchedule {
   day: string;
   weatherTip: string;
+  estimatedCost?: string;
   morning: string;
   morningPlace?: string;
   afternoon: string;
@@ -34,12 +36,17 @@ const dayScheduleSchema: Schema = {
   type: SchemaType.OBJECT,
   properties: {
     day: { type: SchemaType.STRING, nullable: false },
-    weatherTip: {
+      weatherTip: {
       type: SchemaType.STRING,
       description:
         "Breve dica de clima ou roupa para este dia. Ex: 'Leve guarda-chuva' ou 'Muito sol, use protetor'.",
       nullable: false,
-    },
+      },
+      estimatedCost: {
+        type: SchemaType.STRING,
+        description: "Estimativa aproximada de gastos do dia em reais, sem incluir hospedagem e passagens. Ex: R$ 180–250.",
+        nullable: false,
+      },
       morning: { type: SchemaType.STRING, nullable: false },
       morningPlace: { type: SchemaType.STRING, nullable: false },
       afternoon: { type: SchemaType.STRING, nullable: false },
@@ -47,7 +54,7 @@ const dayScheduleSchema: Schema = {
       night: { type: SchemaType.STRING, nullable: false },
       nightPlace: { type: SchemaType.STRING, nullable: false },
   },
-  required: ["day", "weatherTip", "morning", "morningPlace", "afternoon", "afternoonPlace", "night", "nightPlace"],
+  required: ["day", "weatherTip", "estimatedCost", "morning", "morningPlace", "afternoon", "afternoonPlace", "night", "nightPlace"],
 };
 
 const scheduleSchema: Schema = {
@@ -108,7 +115,7 @@ export function getGeminiErrorMessage(error: unknown): { title: string; message:
   };
 }
 
-function buildPrompt({ destination, days, interests, travelStyle, travelDate }: TravelScheduleParams) {
+function buildPrompt({ destination, days, interests, travelStyle, budget, travelDate }: TravelScheduleParams) {
   const whenPrompt = travelDate
     ? `A viagem será em: ${travelDate}. Considere o clima histórico desta época para gerar as 'weatherTips'.`
     : "Considere o clima médio anual.";
@@ -117,10 +124,12 @@ function buildPrompt({ destination, days, interests, travelStyle, travelDate }: 
     Crie um roteiro de ${days} dias para ${destination}.
     O usuário gosta de: ${interests || "pontos turísticos clássicos"}.
     O estilo de viagem é: ${travelStyle || "viajante geral"}. Adapte o ritmo e as sugestões a esse estilo.
+    O orçamento é: ${budget || "moderado"}. Sugira opções compatíveis e indique quando uma atividade pode ter custo elevado.
     ${whenPrompt}
     
     Para cada dia, inclua uma "weatherTip" com previsão de temperatura MÉDIA (ex: Max 30° Min 24°) para essa época do ano e dicas de roupa.
     Para cada período, retorne também o nome exato do principal local ou atração em "morningPlace", "afternoonPlace" e "nightPlace". Se não houver um local específico, use o nome do bairro ou região.
+    Inclua também "estimatedCost" com uma faixa aproximada de gastos do dia em reais, sem incluir hospedagem e passagens, respeitando o orçamento informado.
   `;
 }
 
@@ -196,6 +205,7 @@ export async function regenerateTravelDay(params: {
   day: DaySchedule;
   interests?: string;
   travelStyle?: string;
+  budget?: string;
   travelDate?: string;
 }): Promise<DaySchedule> {
   const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY || "");
@@ -204,8 +214,9 @@ export async function regenerateTravelDay(params: {
     Mantenha o mesmo número e identificação do dia (${params.day.day}), mas sugira atividades diferentes.
     O usuário gosta de: ${params.interests || "pontos turísticos clássicos"}.
     O estilo de viagem é: ${params.travelStyle || "viajante geral"}. Adapte as novas atividades a esse estilo.
+    O orçamento é: ${params.budget || "moderado"}. Mantenha as sugestões compatíveis com esse orçamento.
     ${params.travelDate ? `A viagem será em ${params.travelDate}; considere o clima dessa época.` : "Considere o clima médio anual."}
-    Retorne uma manhã, uma tarde, uma noite, os locais correspondentes em morningPlace, afternoonPlace e nightPlace, e uma dica de clima/roupa.
+    Retorne uma manhã, uma tarde, uma noite, os locais correspondentes em morningPlace, afternoonPlace e nightPlace, uma dica de clima/roupa e a estimativa de custo do dia em estimatedCost.
   `;
   let lastError: unknown;
 

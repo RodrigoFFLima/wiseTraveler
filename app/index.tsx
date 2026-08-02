@@ -37,10 +37,13 @@ export default function Index() {
   const [cooldownTime, setCooldownTime] = useState(0);
   const [onboardingLoading, setOnboardingLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [preferencesMode, setPreferencesMode] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [travelStyle, setTravelStyle] = useState('');
+  const [budget, setBudget] = useState('');
 
   const onboardingStyles = ['Casal', 'Família', 'Aventura', 'Cultura', 'Relaxar'];
+  const budgetOptions = ['Econômico', 'Moderado', 'Confortável', 'Luxo'];
 
   function createChecklist(): ChecklistItem[] {
     return [
@@ -65,9 +68,10 @@ export default function Index() {
     AsyncStorage.getItem('@wise_traveler_preferences').then((value) => {
       if (!value) return;
       try {
-        const preferences = JSON.parse(value) as { travelStyle?: string; interests?: string };
+        const preferences = JSON.parse(value) as { travelStyle?: string; interests?: string; budget?: string };
         if (preferences.travelStyle) setTravelStyle(preferences.travelStyle);
         if (preferences.interests) setInterests(preferences.interests);
+        if (preferences.budget) setBudget(preferences.budget);
       } catch {
         // Preferências antigas inválidas não devem impedir a abertura do app.
       }
@@ -147,6 +151,16 @@ export default function Index() {
       .replace(/'/g, '&#039;');
   }
 
+  function getEstimatedTotal() {
+    if (!schedule) return null;
+    const values = schedule.flatMap((item) =>
+      (item.estimatedCost?.match(/\d+(?:[.,]\d+)?/g) || []).map((value) => Number(value.replace(',', '.')))
+    );
+    if (!values.length) return null;
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  }
+
   async function handleExportPdf() {
     if (!schedule || exportingPdf) return;
     setExportingPdf(true);
@@ -154,12 +168,14 @@ export default function Index() {
       const scheduleHtml = schedule.map((item, index) => `
         <section class="day">
           <div class="day-title"><span class="badge">${index + 1}</span><h2>${escapeHtml(item.day)}</h2></div>
+          ${item.estimatedCost ? `<p class="cost">Estimativa do dia: ${escapeHtml(item.estimatedCost)}</p>` : ''}
           <p class="weather">Temperatura e roupas: ${escapeHtml(item.weatherTip)}</p>
           <div class="activity"><strong>Manhã</strong><p>${escapeHtml(item.morning)}</p></div>
           <div class="activity"><strong>Tarde</strong><p>${escapeHtml(item.afternoon)}</p></div>
           <div class="activity"><strong>Noite</strong><p>${escapeHtml(item.night)}</p></div>
         </section>
       `).join('');
+      const estimatedTotal = getEstimatedTotal();
 
       const html = `
         <!doctype html><html><head><meta charset="utf-8" />
@@ -176,7 +192,7 @@ export default function Index() {
           .activity strong { color: #2c5364; } .activity p { margin: 4px 0 0; line-height: 1.4; }
           footer { color: #849197; font-size: 11px; text-align: center; margin-top: 24px; }
         </style></head><body>
-          <header><h1>WiseTraveler · ${escapeHtml(city)}</h1><p>${escapeHtml(travelDate)} · ${escapeHtml(days)} dias</p></header>
+          <header><h1>WiseTraveler · ${escapeHtml(city)}</h1><p>${escapeHtml(travelDate)} · ${escapeHtml(days)} dias${estimatedTotal ? ` · Total estimado: ${escapeHtml(estimatedTotal)}` : ''}</p></header>
           ${scheduleHtml}<footer>Roteiro criado pelo WiseTraveler</footer>
         </body></html>
       `;
@@ -253,6 +269,7 @@ export default function Index() {
         days: daysNumber,
         interests,
         travelStyle,
+        budget,
         travelDate
       });
 
@@ -309,6 +326,7 @@ export default function Index() {
         day: schedule[index],
         interests,
         travelStyle,
+        budget,
         travelDate,
       });
       const updatedSchedule = schedule.map((day, dayIndex) => dayIndex === index ? replacement : day);
@@ -352,15 +370,17 @@ export default function Index() {
   async function completeOnboarding() {
     await AsyncStorage.setItem('@wise_traveler_onboarding_complete', 'true');
     if (interests.trim()) setInterests(interests.trim());
-    await AsyncStorage.setItem('@wise_traveler_preferences', JSON.stringify({ travelStyle, interests: interests.trim() }));
-    posthog?.capture('onboarding_completed', { travel_style: travelStyle, has_interests: Boolean(interests.trim()) });
+    await AsyncStorage.setItem('@wise_traveler_preferences', JSON.stringify({ travelStyle, interests: interests.trim(), budget }));
+    posthog?.capture(preferencesMode ? 'preferences_updated' : 'onboarding_completed', { travel_style: travelStyle, budget, has_interests: Boolean(interests.trim()) });
     setShowOnboarding(false);
+    setPreferencesMode(false);
   }
 
   function skipOnboarding() {
     AsyncStorage.setItem('@wise_traveler_onboarding_complete', 'true');
     posthog?.capture('onboarding_skipped', { step: onboardingStep });
     setShowOnboarding(false);
+    setPreferencesMode(false);
   }
 
   function handleOpenMap(activity: string, place?: string) {
@@ -455,7 +475,12 @@ export default function Index() {
             <Text style={{ color: '#666', marginVertical: 12 }}>Ex.: gastronomia, natureza, museus, praias...</Text>
             <Input iconName="heart-outline" placeholder="Seus interesses" value={interests} onChangeText={setInterests} />
           </>}
-          <TouchableOpacity onPress={() => onboardingStep < 2 ? setOnboardingStep(onboardingStep + 1) : completeOnboarding()} disabled={onboardingStep === 1 && !travelStyle} style={{ backgroundColor: onboardingStep === 1 && !travelStyle ? '#B7C4C9' : '#2C5364', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 12 }}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{onboardingStep < 2 ? 'Continuar' : 'Começar a planejar'}</Text></TouchableOpacity>
+          {onboardingStep === 3 && <>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#2C5364', marginTop: 18 }}>Qual é o seu orçamento?</Text>
+            <Text style={{ color: '#666', marginVertical: 12 }}>Vamos sugerir experiências que façam sentido para o seu bolso.</Text>
+            {budgetOptions.map((option) => <TouchableOpacity key={option} onPress={() => setBudget(option)} style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: budget === option ? '#2C5364' : '#DDE3E6', backgroundColor: budget === option ? '#E8F1F4' : '#FFF', marginBottom: 8 }}><Text style={{ color: '#2C5364', fontWeight: '600' }}>{option}</Text></TouchableOpacity>)}
+          </>}
+          <TouchableOpacity onPress={() => onboardingStep < 3 ? setOnboardingStep(onboardingStep + 1) : completeOnboarding()} disabled={(onboardingStep === 1 && !travelStyle) || (onboardingStep === 3 && !budget)} style={{ backgroundColor: ((onboardingStep === 1 && !travelStyle) || (onboardingStep === 3 && !budget)) ? '#B7C4C9' : '#2C5364', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 12 }}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{onboardingStep < 3 ? 'Continuar' : 'Começar a planejar'}</Text></TouchableOpacity>
           <TouchableOpacity onPress={skipOnboarding} style={{ alignItems: 'center', padding: 14 }}><Text style={{ color: '#78909C' }}>Pular por agora</Text></TouchableOpacity>
         </View>
         </ScrollView>
@@ -467,9 +492,10 @@ export default function Index() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.dayBadge}><Text style={styles.dayText}>{index + 1}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{item.day.replace(/Dia \d+ - /, '')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{item.day.replace(/Dia \d+ - /, '')}</Text>
+            {item.estimatedCost ? <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}><Ionicons name="cash-outline" size={15} color="#2C5364" /><Text style={{ color: '#2C5364', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Estimativa: {item.estimatedCost}</Text></View> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
             <Ionicons name="thermometer-outline" size={17} color="#666" style={{ marginTop: 2, marginRight: 5 }} />
             <Text style={[styles.weatherTip, { flex: 1 }]}>{item.weatherTip}</Text>
           </View>
@@ -599,6 +625,15 @@ export default function Index() {
                 </TouchableOpacity>
               </View>
             </View>
+            <TouchableOpacity
+              onPress={() => { setPreferencesMode(true); setOnboardingStep(1); setShowOnboarding(true); }}
+              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14 }}
+              accessibilityRole="button"
+              accessibilityLabel="Editar preferências de viagem"
+            >
+              <Ionicons name="options-outline" size={17} color="#2C5364" />
+              <Text style={{ color: '#2C5364', fontSize: 13, fontWeight: '600', marginLeft: 6 }}>Editar preferências</Text>
+            </TouchableOpacity>
 
             <View style={{ marginTop: 30, flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
@@ -653,6 +688,7 @@ export default function Index() {
                 <Text style={{ color: '#666', fontSize: 14 }}>
                   {travelDate} {travelDate ? '-' : ''} {days} dias
                 </Text>
+                {getEstimatedTotal() ? <Text style={{ color: '#2C5364', fontSize: 13, fontWeight: '600', marginTop: 4 }}>Total estimado: {getEstimatedTotal()}</Text> : null}
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity onPress={handleExportPdf} style={styles.shareButton} disabled={exportingPdf}>
