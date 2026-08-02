@@ -1,6 +1,11 @@
 import { Stack } from "expo-router";
+import {
+  PostHogErrorBoundary,
+  PostHogProvider,
+} from "posthog-react-native";
+import { posthog } from "../services/posthog";
 
-export default function RootLayout() {
+function Navigation() {
   return (
     <Stack>
       <Stack.Screen
@@ -10,5 +15,17 @@ export default function RootLayout() {
         }}
       />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return posthog ? (
+    <PostHogProvider client={posthog}>
+      <PostHogErrorBoundary>
+        <Navigation />
+      </PostHogErrorBoundary>
+    </PostHogProvider>
+  ) : (
+    <Navigation />
   );
 }
